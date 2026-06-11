@@ -15,6 +15,7 @@ raicom-weather/
 ├── model.py                   # EfficientNet-B3 模型定义
 ├── train_utils.py             # 训练工具 (Macro F1, LR Scheduler, Early Stopping)
 ├── train.py                   # 训练主脚本
+├── monitor.py                 # 训练期资源监控（CPU/RAM/GPU/RSS）
 ├── quantize_onnx.py           # ONNX INT8 量化（dynamic / static）
 ├── requirements.txt           # 依赖清单
 ├── .gitignore
@@ -57,6 +58,14 @@ data/
 > 也可使用 CSV 标注文件：`data/train/train.csv`（列：`filename, label`）
 
 ### 3️⃣ 训练
+
+> 训练脚本已内置资源监控：
+> - 启动时打印 CPU / RAM / 进程 RSS / GPU 状态
+> - 训练进度条会周期性显示 `cpu / rss / cuda`
+> - `outputs/training_log.json` 每个 epoch 会记录 `resource` 字段
+> - 另外还会独立输出：
+>   - `outputs/train_resource_log.jsonl`（程序分析友好）
+>   - `outputs/train_resource_log.csv`（Excel / pandas 友好）
 
 ```bash
 # 默认配置

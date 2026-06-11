@@ -37,6 +37,7 @@ from train_utils import (
     train_one_epoch,
     validate,
 )
+from monitor import ResourceMonitor, ResourceLogger
 
 
 def set_seed(seed: int):
@@ -119,6 +120,12 @@ def main():
         device = torch.device("cpu")
     print(f"🔧 使用设备: {device}")
 
+    monitor = ResourceMonitor(device=device.type)
+    resource_logger = ResourceLogger(output_dir=cfg.output_dir, run_name="train")
+    boot_snap = monitor.snapshot()
+    monitor.print_snapshot(prefix="[BOOT]")
+    resource_logger.log(boot_snap, stage="boot")
+
     # ── 数据增强 ──
     train_transform = get_train_transforms(
         image_size=cfg.image_size,
@@ -183,11 +190,14 @@ def main():
     log_path = os.path.join(cfg.output_dir, "training_log.json")
     history = []
     print(f"📝 日志保存至: {cfg.output_dir}")
+    print(f"📈 资源日志(JSONL): {resource_logger.jsonl_path}")
+    print(f"📈 资源日志(CSV):   {resource_logger.csv_path}")
 
     # ── 训练循环 ──
     print(f"\n{'='*60}")
     print(f"开始训练  |  模型: {cfg.model_name}  |  类别: {cfg.num_classes}")
     print(f"{'='*60}")
+    print(f"[RESOURCE] {monitor.compact()}")
 
     for epoch in range(start_epoch, cfg.epochs):
         epoch_start = time.time()
@@ -195,12 +205,12 @@ def main():
         # ── 训练 ──
         train_metrics = train_one_epoch(
             model, train_loader, criterion, optimizer, scaler,
-            device, epoch, cfg.log_freq,
+            device, epoch, cfg.log_freq, monitor=monitor,
         )
 
         # ── 验证 ──
         val_metrics = validate(
-            model, val_loader, criterion, device, epoch,
+            model, val_loader, criterion, device, epoch, monitor=monitor,
         )
 
         # ── 学习率 ──
@@ -213,6 +223,20 @@ def main():
         if is_best:
             best_f1 = val_metrics["macro_f1"]
 
+        snap = monitor.snapshot()
+        resource_logger.log(
+            snap,
+            stage="epoch_end",
+            epoch=epoch + 1,
+            extra={
+                "epoch_time_sec": round(epoch_time, 3),
+                "lr": current_lr,
+                "train_loss": train_metrics["loss"],
+                "train_f1": train_metrics["macro_f1"],
+                "val_loss": val_metrics["loss"],
+                "val_f1": val_metrics["macro_f1"],
+            },
+        )
         log_entry = {
             "epoch": epoch + 1,
             "time": round(epoch_time, 1),
@@ -223,6 +247,7 @@ def main():
             "val_loss": round(val_metrics["loss"], 4),
             "val_f1": round(val_metrics["macro_f1"], 4),
             "val_acc": round(val_metrics["accuracy"], 4),
+            "resource": snap.to_dict(),
         }
         history.append(log_entry)
 
@@ -233,7 +258,7 @@ def main():
             f"Val F1 {val_metrics['macro_f1']:.4f} | "
             f"Val Acc {val_metrics['accuracy']:.4f} | "
             f"Best {best_f1:.4f} | "
-            f"{epoch_time:.0f}s"
+            f"{epoch_time:.0f}s | {monitor.compact(snap)}"
         )
 
         # ── 保存检查点 ──
@@ -251,7 +276,7 @@ def main():
         )
 
         # ── 早停检查 ──
-        if early_stopping(-val_metrics["macro_f1"]):
+        if early_stopping(val_metrics["macro_f1"]):
             print(f"\n🛑 早停触发！连续 {cfg.early_stop_patience} 轮未改善。")
             break
 
@@ -259,10 +284,14 @@ def main():
     with open(log_path, "w") as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
 
+    monitor.close()
+
     print(f"\n{'='*60}")
     print(f"🎉 训练完成！最佳 Macro F1: {best_f1:.4f}")
     print(f"   模型路径: {os.path.join(cfg.output_dir, 'best_model.pth')}")
     print(f"   日志路径: {log_path}")
+    print(f"   资源日志(JSONL): {resource_logger.jsonl_path}")
+    print(f"   资源日志(CSV):   {resource_logger.csv_path}")
     print(f"{'='*60}")
 
 

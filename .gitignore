@@ -2,17 +2,9 @@
 
 ## 数据集
 data/
-data_raw_weather4class/*.zip
-data_raw_weather4class/*/*.zip
-data_raw_weather4class/**/Fog_PASCAL_VOC/
-data_raw_weather4class/**/Fog_YOLO_darknet/
-data_raw_weather4class/**/Rain_PASCAL_VOC/
-data_raw_weather4class/**/Rain_YOLO_darknet/
-data_raw_weather4class/**/Sand_PASCAL_VOC/
-data_raw_weather4class/**/Sand_YOLO_darknet/
-data_raw_weather4class/**/Snow_PASCAL_VOC/
-data_raw_weather4class/**/Snow_YOLO_darknet/
-outputs/
+data_raw_weather4class/
+dataset2/
+api_screening/outputs/
 
 ## Python
 __pycache__/

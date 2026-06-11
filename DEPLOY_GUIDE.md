@@ -207,6 +207,34 @@ mkdir -p outputs
 
 ### 3.3 数据集检查
 
+### 3.3.1 训练期资源监控说明
+
+训练脚本已直接内置监控能力，适合首次预训练定位问题：
+
+- **CPU 使用率**：观察 DataLoader / 解码 / 预处理是否成为瓶颈
+- **RAM 使用量**：观察内存是否持续上涨，排查缓存或加载策略问题
+- **进程 RSS**：排查 Python 进程级内存泄漏
+- **GPU 显存 / GPU 利用率**（安装 `pynvml` 时更完整）
+- **epoch 级资源日志**：写入 `outputs/training_log.json -> resource`
+- **独立资源日志**：
+  - `outputs/train_resource_log.jsonl`
+  - `outputs/train_resource_log.csv`
+
+训练时你会看到类似输出：
+
+```text
+[BOOT] CPU 8% | RAM 12.5GB/44% | RSS 0.31GB | CUDA 512MB
+Epoch  3/60 | LR 8.00e-04 | Train F1 0.9123 | Val F1 0.9056 | ... | CPU 36% | RAM 13.0GB/46% | RSS 1.85GB | CUDA 4210MB
+```
+
+如果要让 GPU 利用率/温度更完整，建议额外安装：
+
+```bash
+pip install psutil pynvml
+```
+
+## 3.4 数据集检查
+
 放好图片后，运行以下命令确认各类别数量：
 
 ```bash

@@ -196,6 +196,7 @@ def train_one_epoch(
     device: torch.device,
     epoch: int,
     log_freq: int = 50,
+    monitor=None,
 ) -> Dict:
     """训练一个 epoch"""
     model.train()
@@ -238,7 +239,14 @@ def train_one_epoch(
 
         if log_freq > 0 and isinstance(pbar, object):
             try:
-                pbar.set_postfix({"loss": f"{loss.item():.4f}"})
+                postfix = {"loss": f"{loss.item():.4f}"}
+                if monitor is not None and (step % max(1, log_freq) == 0):
+                    snap = monitor.snapshot()
+                    postfix["cpu"] = f"{snap.cpu_percent:.0f}%"
+                    postfix["rss"] = f"{snap.process_rss_gb:.2f}G"
+                    if snap.torch_reserved_mb is not None:
+                        postfix["cuda"] = f"{snap.torch_reserved_mb:.0f}M"
+                pbar.set_postfix(postfix)
             except Exception:
                 pass
 
@@ -261,6 +269,7 @@ def validate(
     criterion: nn.Module,
     device: torch.device,
     epoch: int = 0,
+    monitor=None,
 ) -> Dict:
     """验证"""
     model.eval()
@@ -271,7 +280,7 @@ def validate(
     from tqdm import tqdm
     pbar = tqdm(loader, desc=f"Epoch {epoch:2d} [Val]  ", leave=False)
 
-    for images, labels in pbar:
+    for step, (images, labels) in enumerate(pbar):
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
@@ -282,6 +291,17 @@ def validate(
         preds = logits.argmax(dim=1).cpu().numpy()
         all_preds.extend(preds.tolist())
         all_labels.extend(labels.cpu().numpy().tolist())
+
+        if monitor is not None and step % 20 == 0:
+            try:
+                snap = monitor.snapshot()
+                pbar.set_postfix({
+                    "loss": f"{loss.item():.4f}",
+                    "cpu": f"{snap.cpu_percent:.0f}%",
+                    "rss": f"{snap.process_rss_gb:.2f}G",
+                })
+            except Exception:
+                pass
 
     avg_loss = total_loss / len(loader)
     metrics = compute_metrics(
