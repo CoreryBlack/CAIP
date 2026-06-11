@@ -15,8 +15,7 @@ raicom-weather/
 ├── model.py                   # EfficientNet-B3 模型定义
 ├── train_utils.py             # 训练工具 (Macro F1, LR Scheduler, Early Stopping)
 ├── train.py                   # 训练主脚本
-├── export_onnx.py             # ONNX 导出 + 推理基准测试
-├── infer.py                   # CPU 推理 (ONNX Runtime, 支持 TTA)
+├── quantize_onnx.py           # ONNX INT8 量化（dynamic / static）
 ├── requirements.txt           # 依赖清单
 ├── .gitignore
 └── README.md
@@ -91,7 +90,32 @@ python export_onnx.py --checkpoint ./outputs/best_model.pth
 
 导出时会自动运行 CPU 推理基准测试，输出单张推理耗时和 70 分钟可处理总量。
 
-### 5️⃣ CPU 推理
+### 5️⃣ ONNX INT8 量化
+
+```bash
+# 先做 dynamic 量化（最快上手）
+python quantize_onnx.py --onnx-path ./outputs/model.onnx --benchmark
+
+# 再做 static 量化（推荐比赛最终版）
+python quantize_onnx.py --onnx-path ./outputs/model.onnx \
+                        --mode static \
+                        --calib-dir ./data/train \
+                        --max-calib-images 256 \
+                        --benchmark
+```
+
+推荐工作流：
+1. 先训练得到 `best_model.pth`
+2. `export_onnx.py` 导出 FP32 ONNX
+3. `quantize_onnx.py` 做 INT8 量化
+4. 用 `infer.py --onnx-path <int8.onnx>` 直接测试
+
+说明：
+- `dynamic`：无需校准集，适合先看速度收益
+- `static`：需要校准图片，通常对 CNN 模型更稳，推荐最终提交前尝试
+- `--benchmark`：自动对 FP32 / INT8 做简单 CPU 吞吐测试
+
+### 6️⃣ CPU 推理
 
 ```bash
 # 对测试集推理（批处理）

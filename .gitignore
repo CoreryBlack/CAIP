@@ -1,10 +1,17 @@
 # RAICOM 2026 — 智海算法调优赛
 
-## 数据
+## 数据集
 data/
-!data/.gitkeep
-
-## 输出（模型权重、日志、预测结果）
+data_raw_weather4class/*.zip
+data_raw_weather4class/*/*.zip
+data_raw_weather4class/**/Fog_PASCAL_VOC/
+data_raw_weather4class/**/Fog_YOLO_darknet/
+data_raw_weather4class/**/Rain_PASCAL_VOC/
+data_raw_weather4class/**/Rain_YOLO_darknet/
+data_raw_weather4class/**/Sand_PASCAL_VOC/
+data_raw_weather4class/**/Sand_YOLO_darknet/
+data_raw_weather4class/**/Snow_PASCAL_VOC/
+data_raw_weather4class/**/Snow_YOLO_darknet/
 outputs/
 
 ## Python
