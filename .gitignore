@@ -1,0 +1,33 @@
+# RAICOM 2026 — 智海算法调优赛
+
+## 数据
+data/
+!data/.gitkeep
+
+## 输出（模型权重、日志、预测结果）
+outputs/
+
+## Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+## 虚拟环境
+venv/
+.venv/
+conda-env/
+*.env
+
+## IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+## 系统
+.DS_Store
+Thumbs.db
