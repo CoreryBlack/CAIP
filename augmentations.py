@@ -43,8 +43,7 @@ def get_train_transforms(image_size: int = 300, strength: float = 1.0):
         scale_range = (1.0 - 0.15 * s, 1.0 + 0.10 * s)
         transforms.append(
             A.RandomResizedCrop(
-                height=image_size,
-                width=image_size,
+                size=(image_size, image_size),
                 scale=(0.75, 1.0) if s <= 1.0 else (0.60, 1.0),
                 ratio=(0.9, 1.1),
                 p=0.5,
@@ -89,21 +88,21 @@ def get_train_transforms(image_size: int = 300, strength: float = 1.0):
         )
         # 高斯噪声
         transforms.append(
-            A.GaussNoise(var_limit=(5.0 * s, 15.0 * s), p=0.15 * s)
+            A.GaussNoise(std_range=(0.02 * s, 0.06 * s), p=0.15 * s)
         )
 
     # ── 图像质量退化（高强度） ──
     if s >= 0.8:
-        transforms.append(A.JpegCompression(quality_lower=60, quality_upper=95, p=0.1 * s))
+        transforms.append(A.ImageCompression(quality_range=(60, 95), p=0.1 * s))
 
     # ── 随机擦除 / Cutout ──
     if s >= 0.5:
         transforms.append(
             A.CoarseDropout(
-                max_holes=int(4 * s),
-                max_height=int(0.1 * image_size),
-                max_width=int(0.1 * image_size),
-                fill_value=0,
+                num_holes_range=(1, int(4 * s)),
+                hole_height_range=(int(0.05 * image_size), int(0.1 * image_size)),
+                hole_width_range=(int(0.05 * image_size), int(0.1 * image_size)),
+                fill=0,
                 p=0.3 * s,
             )
         )

@@ -1,10 +1,17 @@
 # RAICOM 2026 — 智海算法调优赛
 
-## 数据集
+## 数据集 & 训练产物
 data/
 data_raw_weather4class/
-dataset2/
+training_data_*
+dataset_unified/
+dataset_cleaned/
+outputs/
 api_screening/outputs/
+
+## 辅助文件
+scripts/*.png
+scripts/*.csv
 
 ## Python
 __pycache__/

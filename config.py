@@ -31,6 +31,7 @@ class Config:
     pretrained: bool = True                  # 使用 ImageNet 预训练权重
     in_channels: int = 3                     # 输入通道
     image_size: int = 300                    # 输入图像尺寸 (EfficientNet-B3 推荐 300)
+    dropout_rate: float = 0.4                # 分类头 Dropout（提高以对抗过拟合）
 
     # ─── 训练 ────────────────────────────────────────────
     epochs: int = 60                         # 最大训练轮数

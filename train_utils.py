@@ -12,6 +12,7 @@ RAICOM 2026 — 智海算法调优赛
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from sklearn.metrics import f1_score, accuracy_score, classification_report
 from torch.optim.lr_scheduler import _LRScheduler
 import math
@@ -84,6 +85,66 @@ def create_criterion(
         weight=class_weights,
         label_smoothing=label_smoothing,
     )
+
+
+# ════════════════════════════════════════════════════════
+# Mixup / CutMix
+# ════════════════════════════════════════════════════════
+
+def rand_bbox(size, lam):
+    """CutMix: 随机裁剪区域"""
+    W, H = size[2], size[3]
+    cut_rat = math.sqrt(1.0 - lam)
+    cut_w = int(W * cut_rat)
+    cut_h = int(H * cut_rat)
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+    x1 = np.clip(cx - cut_w // 2, 0, W)
+    y1 = np.clip(cy - cut_h // 2, 0, H)
+    x2 = np.clip(cx + cut_w // 2, 0, W)
+    y2 = np.clip(cy + cut_h // 2, 0, H)
+    return x1, y1, x2, y2
+
+
+def mixup_cutmix(images, labels, num_classes, alpha=0.2, cutmix_prob=0.5):
+    """
+    对一个 batch 随机应用 Mixup 或 CutMix
+
+    Args:
+        images: [B, C, H, W]
+        labels: [B] (整数标签)
+        num_classes: 类别数
+        alpha: Beta 分布参数（越大混合越强）
+        cutmix_prob: 使用 CutMix 的概率（否则用 Mixup）
+
+    Returns:
+        mixed_images, soft_labels (one-hot, float)
+    """
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1.0
+
+    batch_size = images.size(0)
+    index = torch.randperm(batch_size, device=images.device)
+
+    # one-hot 标签
+    labels_onehot = F.one_hot(labels, num_classes).float()
+
+    if np.random.rand() < cutmix_prob:
+        # CutMix
+        x1, y1, x2, y2 = rand_bbox(images.size(), lam)
+        images_mixed = images.clone()
+        images_mixed[:, :, y1:y2, x1:x2] = images[index, :, y1:y2, x1:x2]
+        # 按面积调整 lambda
+        lam = 1 - ((x2 - x1) * (y2 - y1) / (images.size(-1) * images.size(-2)))
+        soft_labels = lam * labels_onehot + (1 - lam) * labels_onehot[index]
+    else:
+        # Mixup
+        images_mixed = lam * images + (1 - lam) * images[index]
+        soft_labels = lam * labels_onehot + (1 - lam) * labels_onehot[index]
+
+    return images_mixed, soft_labels
 
 
 # ════════════════════════════════════════════════════════
@@ -197,8 +258,11 @@ def train_one_epoch(
     epoch: int,
     log_freq: int = 50,
     monitor=None,
+    mixup_alpha: float = 0.0,
+    cutmix_prob: float = 0.5,
+    num_classes: int = 4,
 ) -> Dict:
-    """训练一个 epoch"""
+    """训练一个 epoch（支持 Mixup/CutMix）"""
     model.train()
     total_loss = 0.0
     all_preds, all_labels = [], []
@@ -212,10 +276,23 @@ def train_one_epoch(
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
+        # Mixup / CutMix
+        use_mix = mixup_alpha > 0 and np.random.rand() < 0.8  # 80% 概率启用
+        if use_mix:
+            images, soft_labels = mixup_cutmix(
+                images, labels, num_classes,
+                alpha=mixup_alpha, cutmix_prob=cutmix_prob,
+            )
+
         # 混合精度前向
         with torch.amp.autocast("cuda", enabled=(scaler is not None)):
             logits = model(images)
-            loss = criterion(logits, labels)
+            if use_mix:
+                # 软标签交叉熵
+                log_probs = F.log_softmax(logits, dim=1)
+                loss = -(soft_labels * log_probs).sum(dim=1).mean()
+            else:
+                loss = criterion(logits, labels)
 
         # 反向
         optimizer.zero_grad(set_to_none=True)

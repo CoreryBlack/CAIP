@@ -67,6 +67,16 @@ class WeatherClassifier(nn.Module):
         logits = self.classifier(features)  # [B, num_classes]
         return logits
 
+    def freeze_backbone(self):
+        """冻结主干，仅训练分类头"""
+        for p in self.backbone.parameters():
+            p.requires_grad = False
+
+    def unfreeze_backbone(self):
+        """解冻主干，全量训练"""
+        for p in self.backbone.parameters():
+            p.requires_grad = True
+
     def get_features(self, x: torch.Tensor) -> torch.Tensor:
         """提取特征向量（用于知识蒸馏或集成）"""
         return self.backbone(x)
@@ -78,7 +88,7 @@ def create_model(cfg) -> WeatherClassifier:
         num_classes=cfg.num_classes,
         model_name=cfg.model_name,
         pretrained=cfg.pretrained,
-        dropout_rate=0.3,
+        dropout_rate=cfg.dropout_rate,
     )
     return model
 
@@ -86,7 +96,7 @@ def create_model(cfg) -> WeatherClassifier:
 def load_model(checkpoint_path: str, cfg) -> WeatherClassifier:
     """从检查点加载模型权重"""
     model = create_model(cfg)
-    state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
 
     # 兼容 DDP 或完整 checkpoint
     if "model_state_dict" in state_dict:

@@ -88,6 +88,7 @@ def export_to_onnx(args):
         output_names=["output"],
         dynamic_axes=dynamic_axes,
         opset_version=args.opset,
+        dynamo=False,
         do_constant_folding=True,
     )
 

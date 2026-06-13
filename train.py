@@ -92,6 +92,12 @@ def parse_args():
                         help="随机种子")
     parser.add_argument("--no-amp", action="store_true",
                         help="禁用混合精度训练")
+    parser.add_argument("--mixup-alpha", type=float, default=0.0,
+                        help="Mixup/CutMix alpha（0=禁用，0.2=推荐）")
+    parser.add_argument("--cutmix-prob", type=float, default=0.5,
+                        help="CutMix 概率（其余为 Mixup）")
+    parser.add_argument("--freeze-backbone-epochs", type=int, default=0,
+                        help="前 N 个 epoch 冻结 backbone，仅训练分类头")
     return parser.parse_args()
 
 
@@ -100,6 +106,15 @@ def main():
 
     # ── 更新配置 ──
     cfg.data_root = args.data_root
+    # 自动检测数据结构：如果 data_root/train 不存在但 class 目录存在，则 train=data_root
+    potential_train = os.path.join(cfg.data_root, "train")
+    if os.path.isdir(potential_train):
+        cfg.train_dir = potential_train
+    elif any(os.path.isdir(os.path.join(cfg.data_root, c)) for c in cfg.classes):
+        cfg.train_dir = cfg.data_root
+    else:
+        cfg.train_dir = potential_train
+    cfg.val_dir = os.path.join(cfg.data_root, "val")
     cfg.output_dir = args.output_dir
     cfg.epochs = args.epochs
     cfg.batch_size = args.batch_size
@@ -164,7 +179,7 @@ def main():
 
     # ── 优化器 ──
     optimizer = torch.optim.AdamW(
-        model.parameters(),
+        filter(lambda p: p.requires_grad, model.parameters()),
         lr=cfg.lr,
         weight_decay=cfg.weight_decay,
     )
@@ -196,16 +211,41 @@ def main():
     # ── 训练循环 ──
     print(f"\n{'='*60}")
     print(f"开始训练  |  模型: {cfg.model_name}  |  类别: {cfg.num_classes}")
+    if args.mixup_alpha > 0:
+        print(f"Mixup/CutMix  |  alpha={args.mixup_alpha}  |  cutmix_prob={args.cutmix_prob}")
     print(f"{'='*60}")
     print(f"[RESOURCE] {monitor.compact()}")
 
     for epoch in range(start_epoch, cfg.epochs):
         epoch_start = time.time()
 
+        # ── 冻结/解冻 backbone ──
+        if args.freeze_backbone_epochs > 0:
+            if epoch < args.freeze_backbone_epochs:
+                if hasattr(model, 'freeze_backbone'):
+                    model.freeze_backbone()
+            elif epoch == args.freeze_backbone_epochs:
+                if hasattr(model, 'unfreeze_backbone'):
+                    model.unfreeze_backbone()
+                optimizer = torch.optim.AdamW(
+                    filter(lambda p: p.requires_grad, model.parameters()),
+                    lr=cfg.lr,
+                    weight_decay=cfg.weight_decay,
+                )
+                scheduler = CosineWarmupLR(
+                    optimizer,
+                    total_epochs=cfg.epochs,
+                    warmup_epochs=cfg.warmup_epochs,
+                    lr_min=cfg.lr_min,
+                )
+                print(f"🔓 已在 epoch {epoch+1} 解冻 backbone，切换为全量训练")
+
         # ── 训练 ──
         train_metrics = train_one_epoch(
             model, train_loader, criterion, optimizer, scaler,
             device, epoch, cfg.log_freq, monitor=monitor,
+            mixup_alpha=args.mixup_alpha, cutmix_prob=args.cutmix_prob,
+            num_classes=cfg.num_classes,
         )
 
         # ── 验证 ──

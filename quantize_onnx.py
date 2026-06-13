@@ -103,40 +103,46 @@ def parse_args():
     return parser.parse_args()
 
 
-class ImageCalibrationDataReader:
-    """ONNX Runtime 静态量化校准数据读取器"""
+def _make_calib_reader_class():
+    """动态创建继承自 CalibrationDataReader 的类"""
+    from onnxruntime.quantization import CalibrationDataReader
 
-    def __init__(self, onnx_path: str, image_paths: List[str], image_size: int, batch_size: int):
-        cv2, ort, CalibrationDataReader, *_ = require_quant_deps()
-        self.__class__.__bases__ = (CalibrationDataReader,)
-        self.cv2 = cv2
-        self.image_paths = image_paths
-        self.image_size = image_size
-        self.batch_size = batch_size
-        self.transform = get_val_transform_lazy(image_size=image_size)
+    class ImageCalibrationDataReader(CalibrationDataReader):
+        """ONNX Runtime 静态量化校准数据读取器"""
 
-        session = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
-        self.input_name = session.get_inputs()[0].name
-        self._iter = None
+        def __init__(self, onnx_path: str, image_paths: List[str], image_size: int, batch_size: int):
+            import cv2
+            import onnxruntime as ort
+            self.cv2 = cv2
+            self.image_paths = image_paths
+            self.image_size = image_size
+            self.batch_size = batch_size
+            self.transform = get_val_transform_lazy(image_size=image_size)
 
-    def _preprocess(self, image_path: str) -> np.ndarray:
-        img = self.cv2.imread(image_path)
-        if img is None:
-            raise FileNotFoundError(f"无法读取校准图片: {image_path}")
-        img = self.cv2.cvtColor(img, self.cv2.COLOR_BGR2RGB)
-        tensor = self.transform(image=img)["image"].numpy().astype(np.float32)
-        return tensor
+            session = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+            self.input_name = session.get_inputs()[0].name
+            self._iter = None
 
-    def get_next(self):
-        if self._iter is None:
-            self._iter = self._batch_iterator()
-        return next(self._iter, None)
+        def _preprocess(self, image_path: str) -> np.ndarray:
+            img = self.cv2.imread(image_path)
+            if img is None:
+                raise FileNotFoundError(f"无法读取校准图片: {image_path}")
+            img = self.cv2.cvtColor(img, self.cv2.COLOR_BGR2RGB)
+            tensor = self.transform(image=img)["image"].numpy().astype(np.float32)
+            return tensor
 
-    def _batch_iterator(self) -> Iterator[dict]:
-        for i in range(0, len(self.image_paths), self.batch_size):
-            batch_paths = self.image_paths[i:i + self.batch_size]
-            batch = np.stack([self._preprocess(p) for p in batch_paths], axis=0)
-            yield {self.input_name: batch}
+        def get_next(self):
+            if self._iter is None:
+                self._iter = self._batch_iterator()
+            return next(self._iter, None)
+
+        def _batch_iterator(self) -> Iterator[dict]:
+            for i in range(0, len(self.image_paths), self.batch_size):
+                batch_paths = self.image_paths[i:i + self.batch_size]
+                batch = np.stack([self._preprocess(p) for p in batch_paths], axis=0)
+                yield {self.input_name: batch}
+
+    return ImageCalibrationDataReader
 
 
 def collect_images(root: str, max_images: int) -> List[str]:
@@ -220,6 +226,7 @@ def quantize_static_model(args, output_path: str):
     image_paths = collect_images(args.calib_dir, args.max_calib_images)
     print(f"📸 校准图片: {len(image_paths)} 张")
 
+    ImageCalibrationDataReader = _make_calib_reader_class()
     reader = ImageCalibrationDataReader(
         onnx_path=args.onnx_path,
         image_paths=image_paths,
