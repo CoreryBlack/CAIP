@@ -72,8 +72,6 @@ def parse_args():
     )
     parser.add_argument("--data-root", type=str, default=cfg.data_root,
                         help="数据集根目录")
-    parser.add_argument("--output-dir", type=str, default=cfg.output_dir,
-                        help="输出目录")
     parser.add_argument("--epochs", type=int, default=cfg.epochs,
                         help="最大训练轮数")
     parser.add_argument("--batch-size", type=int, default=cfg.batch_size,
@@ -98,6 +96,10 @@ def parse_args():
                         help="CutMix 概率（其余为 Mixup）")
     parser.add_argument("--freeze-backbone-epochs", type=int, default=0,
                         help="前 N 个 epoch 冻结 backbone，仅训练分类头")
+    parser.add_argument("--model-name", type=str, default="",
+                        help="timm 模型名（覆盖 config），自动设置 image_size/batch/output_dir")
+    parser.add_argument("--output-dir", type=str, default=cfg.output_dir,
+                        help="输出目录")
     return parser.parse_args()
 
 
@@ -106,6 +108,18 @@ def main():
 
     # ── 更新配置 ──
     cfg.data_root = args.data_root
+    cfg.model_name = args.model_name or cfg.model_name
+    # 模型预设：自动设置 image_size / batch_size / output_dir
+    preset = cfg.MODEL_PRESETS.get(cfg.model_name, {})
+    if not args.image_size or args.image_size == 300:
+        cfg.image_size = preset.get("image_size", args.image_size)
+    else:
+        cfg.image_size = args.image_size
+    if args.batch_size == 64:  # 默认未改
+        cfg.batch_size = preset.get("batch_size", args.batch_size)
+    else:
+        cfg.batch_size = args.batch_size
+    cfg.output_dir = args.output_dir or f"./outputs_{cfg.model_name}"
     # 自动检测数据结构：如果 data_root/train 不存在但 class 目录存在，则 train=data_root
     potential_train = os.path.join(cfg.data_root, "train")
     if os.path.isdir(potential_train):

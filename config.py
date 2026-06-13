@@ -33,6 +33,13 @@ class Config:
     image_size: int = 300                    # 输入图像尺寸 (EfficientNet-B3 推荐 300)
     dropout_rate: float = 0.4                # 分类头 Dropout（提高以对抗过拟合）
 
+    # 模型预设（model_name → 推荐 image_size, batch_size）
+    MODEL_PRESETS: dict = field(default_factory=lambda: {
+        "efficientnet_b3":  {"image_size": 300, "batch_size": 32},
+        "efficientnet_b4":  {"image_size": 380, "batch_size": 24},
+        "convnext_tiny":    {"image_size": 224, "batch_size": 48},
+    })
+
     # ─── 训练 ────────────────────────────────────────────
     epochs: int = 60                         # 最大训练轮数
     batch_size: int = 64                     # 批大小（根据 GPU 显存调整）
