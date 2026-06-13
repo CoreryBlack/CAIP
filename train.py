@@ -98,8 +98,8 @@ def parse_args():
                         help="前 N 个 epoch 冻结 backbone，仅训练分类头")
     parser.add_argument("--model-name", type=str, default="",
                         help="timm 模型名（覆盖 config），自动设置 image_size/batch/output_dir")
-    parser.add_argument("--output-dir", type=str, default=cfg.output_dir,
-                        help="输出目录")
+    parser.add_argument("--output-dir", type=str, default="",
+                        help="输出目录（留空则根据模型名自动生成）")
     return parser.parse_args()
 
 
@@ -119,7 +119,7 @@ def main():
         cfg.batch_size = preset.get("batch_size", args.batch_size)
     else:
         cfg.batch_size = args.batch_size
-    cfg.output_dir = args.output_dir or f"./outputs_{cfg.model_name}"
+    cfg.output_dir = args.output_dir if args.output_dir else f"./outputs_{cfg.model_name}"
     # 自动检测数据结构：如果 data_root/train 不存在但 class 目录存在，则 train=data_root
     potential_train = os.path.join(cfg.data_root, "train")
     if os.path.isdir(potential_train):
