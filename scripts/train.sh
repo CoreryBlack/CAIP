@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # RAICOM 2026 — Linux 训练启动脚本
-# 用法: bash train.sh [--large] [--tiny]
+# 用法: bash scripts/train.sh [--large] [--tiny]
 
 set -e
+
+# 自动定位项目根目录
+cd "$(dirname "$0")/.."
+PROJECT_ROOT="$(pwd)"
 
 # 默认数据目录
 DATA_ROOT="${DATA_ROOT:-./dataset_cleaned}"
