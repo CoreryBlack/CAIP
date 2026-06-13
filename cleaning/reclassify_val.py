@@ -10,8 +10,6 @@ from pathlib import Path
 from collections import Counter
 
 SRC_DIR = Path(__file__).parent
-sys.path.insert(0, str(SRC_DIR / "api_screening"))
-from providers.qwen_provider import QwenVisionProvider
 
 VAL_DIR = Path(__file__).parent.parent / "training_data_1" / "val"
 CLASSES = ["cloudy", "rainy", "snowy", "sunny"]
@@ -87,6 +85,10 @@ def main():
             n = sum(1 for i in images if i["current_label"] == cls)
             print(f"  {cls}: {n}")
         return
+
+    # 延迟导入，避免 dry-run 时缺依赖
+    sys.path.insert(0, str(SRC_DIR / "api_screening"))
+    from providers.qwen_provider import QwenVisionProvider
 
     # 输出路径
     out_dir = os.path.join(args.val_dir, "_reclassify_output")
