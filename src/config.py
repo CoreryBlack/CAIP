@@ -43,7 +43,7 @@ class Config:
     # ─── 训练 ────────────────────────────────────────────
     epochs: int = 60                         # 最大训练轮数
     batch_size: int = 64                     # 批大小（根据 GPU 显存调整）
-    num_workers: int = 8                     # 数据加载线程数（Linux 服务器设 12-16）
+    num_workers: int = 4                     # 数据加载线程数
     lr: float = 1e-3                        # 初始学习率
     weight_decay: float = 1e-4              # 权重衰减
     lr_min: float = 1e-6                    # 学习率下限（CosineAnnealing）
