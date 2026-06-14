@@ -46,8 +46,8 @@ def set_seed(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = False
+    torch.backends.cudnn.benchmark = True
 
 
 def save_checkpoint(
@@ -184,6 +184,14 @@ def main():
         start_epoch = 0
         best_f1 = 0.0
     model = model.to(device)
+
+    # ── JIT 编译加速（PyTorch 2.0+） ──
+    if hasattr(torch, 'compile'):
+        try:
+            model = torch.compile(model, mode="reduce-overhead")
+            print("⚡ torch.compile 已启用 (reduce-overhead)")
+        except Exception as e:
+            print(f"⚠️  torch.compile 失败，跳过: {e}")
 
     # ── 损失函数 ──
     criterion = create_criterion(

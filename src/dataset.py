@@ -197,6 +197,8 @@ def build_data_loaders(
         num_workers=cfg.num_workers,
         pin_memory=True,
         drop_last=True,
+        persistent_workers=(cfg.num_workers > 0),
+        prefetch_factor=4,
     )
 
     val_loader = DataLoader(
@@ -206,6 +208,8 @@ def build_data_loaders(
         num_workers=cfg.num_workers,
         pin_memory=True,
         drop_last=False,
+        persistent_workers=(cfg.num_workers > 0),
+        prefetch_factor=4,
     )
 
     # ── 测试集（可选） ──
