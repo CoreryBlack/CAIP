@@ -38,6 +38,8 @@ class Config:
         "efficientnet_b3":  {"image_size": 300, "batch_size": 32},
         "efficientnet_b4":  {"image_size": 380, "batch_size": 24},
         "convnext_tiny":    {"image_size": 224, "batch_size": 48},
+        "resnet50":         {"image_size": 224, "batch_size": 64},
+        "resnet101":        {"image_size": 224, "batch_size": 48},
     })
 
     # ─── 训练 ────────────────────────────────────────────
