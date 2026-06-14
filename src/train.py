@@ -185,14 +185,6 @@ def main():
         best_f1 = 0.0
     model = model.to(device)
 
-    # ── JIT 编译加速（PyTorch 2.0+） ──
-    if hasattr(torch, 'compile'):
-        try:
-            model = torch.compile(model, mode="reduce-overhead")
-            print("⚡ torch.compile 已启用 (reduce-overhead)")
-        except Exception as e:
-            print(f"⚠️  torch.compile 失败，跳过: {e}")
-
     # ── 损失函数 ──
     criterion = create_criterion(
         num_classes=cfg.num_classes,
