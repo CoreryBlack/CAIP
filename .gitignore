@@ -6,6 +6,8 @@ data_raw_weather4class/
 training_data_*
 dataset_unified/
 dataset_cleaned/
+dataset_cleaned_clean.zip
+datasets.zip
 outputs/
 api_screening/outputs/
 
@@ -33,6 +35,9 @@ conda-env/
 *.swp
 *.swo
 *~
+
+## 敏感文件
+_replacements.txt
 
 ## 系统
 .DS_Store
