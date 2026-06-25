@@ -7,7 +7,6 @@ training_data_*
 dataset_unified/
 dataset_cleaned/
 dataset_cleaned_clean.zip
-datasets.zip
 outputs/
 api_screening/outputs/
 
